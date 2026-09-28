@@ -15,5 +15,3 @@ def sort_by_date(
         key=lambda item: item.get("date", ""),
         reverse=descending,
     )
-
-

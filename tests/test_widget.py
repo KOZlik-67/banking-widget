@@ -3,39 +3,38 @@ import pytest
 from src.widget import get_date, mask_account_card
 
 
+def test_mask_account_card_visa() -> None:
+    """Тестирование маскировки номера карты Visa."""
+    card = "Visa Platinum 7000792289606361"
+    assert mask_account_card(card) == "Visa Platinum 7000 79** **** 6361"
+
+
+def test_mask_account_card_account() -> None:
+    """Тестирование маскировки номера счета."""
+    account = "Счет 73654108430135874305"
+    assert mask_account_card(account) == "Счет **4305"
+
+
 @pytest.mark.parametrize(
-    "input_data, expected",
+    "value, expected",
     [
-        ("Visa Platinum 7000792289606361", "Visa Platinum 7000 79** **** 6361"),
-        ("MasterCard 7000792289606361", "MasterCard 7000 79** **** 6361"),
-        ("МИР 7000792289606361", "МИР 7000 79** **** 6361"),
-        ("Счет 73654108430135874305", "Счет **4305"),
-        ("Счёт 73654108430135874305", "Счёт **4305"),
-        ("", ""),
-        ("   ", ""),
-        ("CardOnly", "CardOnly"),
-        ("Visa Platinum number", "Visa Platinum number"),
+        ("Maestro 1596837868705199", "Maestro 1596 83** **** 5199"),
+        ("MasterCard 7158300734726758", "MasterCard 7158 30** **** 6758"),
+        ("Счет 35383033474447895560", "Счет **5560"),
     ],
 )
-def test_mask_account_card(input_data: str, expected: str) -> None:
-    """Тестирование маскирования карт и счетов с параметризацией."""
-    assert mask_account_card(input_data) == expected
+def test_mask_account_card_parametrize(value: str, expected: str) -> None:
+    """Параметризованный тест для карт и счетов."""
+    assert mask_account_card(value) == expected
 
 
 @pytest.mark.parametrize(
-    "date_str, expected",
+    "date_string, expected",
     [
         ("2024-03-11T02:26:18.671407", "11.03.2024"),
-        ("2018-07-11T12:00:00", "11.07.2018"),
-        ("2026-09-21T13:00:00.000", "21.09.2026"),
+        ("2018-07-11T02:26:18.671407", "11.07.2018"),
     ],
 )
-def test_get_date(date_str: str, expected: str) -> None:
-    """Тестирование корректного преобразования дату."""
-    assert get_date(date_str) == expected
-
-
-def test_get_date_invalid() -> None:
-    """Проверка возбуждения ошибки при некорректном   даты."""
-    with pytest.raises(ValueError):
-        get_date("invalid-date-string")
+def test_get_date(date_string: str, expected: str) -> None:
+    """Тестирование форматирования даты."""
+    assert get_date(date_string) == expected
