@@ -4,8 +4,15 @@ import functools
 from typing import Any, Callable, Optional
 
 
-def log(filename: Optional[str] = None) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """Декоратор для логирования выполнения функции и обработки ошибок """
+def log(
+    filename: Optional[str] = None,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Декоратор для логирования выполнения функции и обработки ошибок.
+
+    :param filename: Имя файла для записи логов. Если None, вывод в консоль.
+    :return: Обернутая функция.
+    """
+
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -22,8 +29,11 @@ def log(filename: Optional[str] = None) -> Callable[[Callable[..., Any]], Callab
                 write_log(f"{func.__name__} ok")
                 return result
             except Exception as e:
-                # В тексте задания формат: <name> error: <тип ошибки>. Inputs: (<args>), {<kwargs>}
-                error_msg = f"{func.__name__} error: {e.__class__.__name__}. Inputs: {args}, {kwargs}"
+                error_name = e.__class__.__name__
+                error_msg = (
+                    f"{func.__name__} error: {error_name}. "
+                    f"Inputs: {args}, {kwargs}"
+                )
                 write_log(error_msg)
                 raise e
 
