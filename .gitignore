@@ -9,5 +9,6 @@ env/
 .mypy_cache/
 .pytest_cache/
 .env
-
+logs/
+*.log
 .coverage
