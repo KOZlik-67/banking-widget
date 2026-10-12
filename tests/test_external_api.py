@@ -1,51 +1,114 @@
-"""Модуль конвертации валют транзакций через внешний API."""
+"""Тестирование модуля конвертации валют через API."""
 
-import os
-from typing import Any, Dict
+from unittest.mock import Mock, patch
 
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+from src.external_api import convert_to_rubles
 
 
-def convert_to_rubles(transaction: Dict[str, Any]) -> float:
-    """Конвертирует сумму операции в рубли (RUB).
+def test_convert_to_rubles_rub() -> None:
+    """Проверка возврата суммы для транзакции в RUB без обращения к API."""
+    transaction = {
+        "operationAmount": {
+            "amount": "1500.50",
+            "currency": {"code": "RUB"},
+        }
+    }
+    assert convert_to_rubles(transaction) == 1500.50
 
-    Если валюта операции указана как USD или EUR,
-    запрашивает актуальный курс через Exchange Rates Data API.
-    Для операций в рублях возвращает сумму без запроса к API.
-    """
-    operation_amount = transaction.get("operationAmount", {})
-    amount_str = operation_amount.get("amount", "0")
-    try:
-        amount = float(amount_str)
-    except (ValueError, TypeError):
-        return 0.0
 
-    currency_code = (
-        operation_amount.get("currency", {}).get("code", "").upper()
-    )
+@patch("src.external_api.requests.get")
+def test_convert_to_rubles_usd_success(mock_get: Mock) -> None:
+    """Проверка успешной конвертации USD через API."""
+    mock_response = Mock()
+    mock_response.json.return_value = {"result": 8500.0}
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
 
-    if currency_code == "RUB":
-        return amount
+    transaction = {
+        "operationAmount": {
+            "amount": "100.0",
+            "currency": {"code": "USD"},
+        }
+    }
+    result = convert_to_rubles(transaction)
+    assert result == 8500.0
+    mock_get.assert_called_once()
 
-    if currency_code in ("USD", "EUR"):
-        api_key = os.getenv("API_KEY", "")
-        url = "https://api.apilayer.com/exchangerates_data/convert"
-        params = {"from": currency_code, "to": "RUB", "amount": str(amount)}
-        headers: Dict[str, str] = {"apikey": api_key}
 
-        try:
-            response = requests.get(
-                url, params=params, headers=headers, timeout=10
-            )
-            response.raise_for_status()
-            data = response.json()
-            result = data.get("result")
-            if result is not None:
-                return float(result)
-        except requests.RequestException:
-            return 0.0
+@patch("src.external_api.requests.get")
+def test_convert_to_rubles_eur_success(mock_get: Mock) -> None:
+    """Проверка успешной конвертации EUR через API."""
+    mock_response = Mock()
+    mock_response.json.return_value = {"result": 9200.75}
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
 
-    return 0.0
+    transaction = {
+        "operationAmount": {
+            "amount": "100.0",
+            "currency": {"code": "EUR"},
+        }
+    }
+    result = convert_to_rubles(transaction)
+    assert result == 9200.75
+    mock_get.assert_called_once()
+
+
+@patch("src.external_api.requests.get")
+def test_convert_to_rubles_request_exception(mock_get: Mock) -> None:
+    """Проверка возврата 0.0 при возникновении сетевой ошибки."""
+    mock_get.side_effect = requests.RequestException("Connection error")
+
+    transaction = {
+        "operationAmount": {
+            "amount": "50.0",
+            "currency": {"code": "USD"},
+        }
+    }
+    assert convert_to_rubles(transaction) == 0.0
+
+
+@patch("src.external_api.requests.get")
+def test_convert_to_rubles_no_result_in_response(mock_get: Mock) -> None:
+    """Проверка случая, когда API вернул ответ без поля result."""
+    mock_response = Mock()
+    mock_response.json.return_value = {"success": False}
+    mock_response.raise_for_status.return_value = None
+    mock_get.return_value = mock_response
+
+    transaction = {
+        "operationAmount": {
+            "amount": "50.0",
+            "currency": {"code": "USD"},
+        }
+    }
+    assert convert_to_rubles(transaction) == 0.0
+
+
+def test_convert_to_rubles_unsupported_currency() -> None:
+    """Проверка возврата 0.0 для неподдерживаемой валюты (например, GBP)."""
+    transaction = {
+        "operationAmount": {
+            "amount": "20.0",
+            "currency": {"code": "GBP"},
+        }
+    }
+    assert convert_to_rubles(transaction) == 0.0
+
+
+def test_convert_to_rubles_invalid_amount() -> None:
+    """Проверка обработки некорректного значения amount."""
+    transaction = {
+        "operationAmount": {
+            "amount": "invalid_num",
+            "currency": {"code": "RUB"},
+        }
+    }
+    assert convert_to_rubles(transaction) == 0.0
+
+
+def test_convert_to_rubles_empty_transaction() -> None:
+    """Проверка обработки пустого словаря транзакции."""
+    assert convert_to_rubles({}) == 0.0
